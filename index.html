@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="author" content="webhauser@gmail.com">
+<title>DVG Vector fonts</title>
+<style>body, html { margin:0; padding:0; border:0; height:100%; overflow:hidden}
+#can {width: 100%; height: 100%; display: block}
+</style>
+<script src="omega.js"></script>
+<script src="aster.js"></script>
+</head>
+<body>
+<canvas id="can"></canvas>
+<script>"use strict"
+var Z=3; // Zoom factor used
+var S=0; // global scale factor
+var can, ctx;
+var x0,y0, px,py, xsize, ysize;
+var font, font_dvg, font_abc;
+
+/**
+function omega_test() {
+	console.log('omega test');
+	console.log(0);
+	for (let i=0; i<omega_dvg.length; i++) {
+		if (omega_dvg[i]==0xD000)
+			console.log(i+1)
+	}
+}
+
+// b: [0..15] 
+function setbright(b) {
+	var hh;
+	b=b<<4;
+	hh=b.toString(16);
+	if (hh.length < 2)
+		hh='0'+hh;
+	ctx.strokeStyle = '#'+hh+hh+hh;
+}
+**/
+
+function setfont(fnt) {	
+	font=fnt;
+	if (fnt=='aster') {
+		font_dvg = aster_dvg;
+		font_abc = aster_abc;
+	}
+	else if (fnt=='omega') {
+		font_dvg = omega_dvg;
+		font_abc = omega_abc;
+	}	
+}
+
+function line(x1,y1, x2,y2, b) {
+var x,y;
+	if (b==0) return; // comment this line to see the blues..
+	ctx.strokeStyle = b ? 'white' : 'blue';
+	ctx.beginPath();
+	x=x1+x0; y=y0-y1;
+	ctx.moveTo(x,y);
+	x=x2+x0; y=y0-y2;
+	ctx.lineTo(x,y);
+	ctx.stroke();
+}
+
+function isletter(c)    { return c>='A' && c<='Z'; }
+function isdigit(c)     { return c>='0' && c<='9'; }
+function isvalidchar(c) { return c==' ' || isletter(c) || isdigit(c); }
+
+function char_offset(c) {
+	if (isletter(c))
+		c = c.charCodeAt(0) - 'A'.charCodeAt(0);
+	else if (isdigit(c))
+		c = c.charCodeAt(0) - '0'.charCodeAt(0) + 27;
+	else if (c==' ')
+		c = 26;
+	else return -1;	
+	return font_abc[c];
+}
+
+function drawch(j) {
+	var dx,dy,ss,s,b;
+	var k = font_dvg[j++];	
+	while (k!=0xD000) {
+		s = (k >> 12) & 15;
+		if (s==15) {
+			s = ((k & 8) >> 2) | ((k >> 11) & 1);
+			b = (k >> 4) & 15;
+			dx = k & 3;
+			if (k & 4)
+				dx=-dx;
+			dy = (k >> 8) & 3;
+			if (k & 0x400)
+				dy=-dy;
+			
+			dx <<= 8; dy <<= 8;
+			
+			ss = 128>>s;
+			//str='0x' + k.toString(16) + ' SVEC';
+		}
+		else if (s < 10) {
+			//str='0x' + k.toString(16);
+			
+			dy = k & 0x3FF;
+			if (k & 0x400)
+				dy=-dy;
+			
+			k = font_dvg[j++];
+			b = (k >> 12) & 15;
+			dx = k & 0x3FF;
+			if (k & 0x400)
+				dx=-dx;
+						
+			ss = 512>>(S+s);
+			//str+=' 0x' + k.toString(16) + '  VEC';
+		}
+		else return;
+		
+		//str+='    scale='+s+'(/'+ss+') x='+dx+' y='+dy+' i='+b;
+		//str+='  ('+dx/ss+' , '+dy/ss+' )';
+		//console.log(str);
+		
+		dx/=ss/Z; dy/=ss/Z;
+		
+		line(px,py, px+dx,py+dy, b);
+		px+=dx; py+=dy;
+
+		k = font_dvg[j++];
+	}
+}
+
+function draw_text(x,y, str) {
+	var c,i,j;
+	
+	px=x;py=y;
+	for (i=0; i<str.length; i++) {
+		c=str[i];
+		//console.log("Char '"+c+"' : ", c.charCodeAt(0));
+		if (isvalidchar(c)) {			
+			if ((j = char_offset(c)) >= 0)
+				drawch(j);
+				//console.log('==> drawch('+c+'): '+j)			
+		}
+	}
+	ctx.stroke();
+}
+
+function display() {
+	ctx.fillStyle = 'black';
+	ctx.fillRect(0,0,xsize,ysize);
+
+	Z=3;
+	setfont('omega');
+	draw_text(-900,-200, "0123456789");
+	draw_text(-900,-100, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	draw_text(-900, 0, "OMEGA RACE DVG VECTOR FONT");
+	
+	Z=4;
+	setfont('aster');
+	draw_text(-500,100, "ASTEROIDS ARCADE VECTOR FONT");
+	draw_text(-500,200, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	draw_text(-500,300, "0123456789");
+}
+
+function resize() {
+    ctx.canvas.width = window.innerWidth;
+    ctx.canvas.height = window.innerHeight;
+	ctx.lineWidth = 1;
+	xsize = ctx.canvas.width;
+	ysize = ctx.canvas.height;
+	x0 = xsize >> 1;
+	y0 = ysize >> 1;
+	display();
+}
+
+function init() {
+	can = document.getElementById("can");
+	ctx = can.getContext("2d");
+	window.addEventListener('resize', resize, false); 
+	resize();
+}
+
+init();
+</script>
+</body>
+</html>
